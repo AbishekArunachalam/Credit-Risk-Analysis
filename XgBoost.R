@@ -54,6 +54,22 @@ rm(list=ls())
 # Credit.cor <- cor(Credit.train)
 # corrplot::corrplot(Credit.cor)
 # class(Credit.train$EDUCATION)
+           
+           
+#Validation set
+Credit.test <- read.csv("AT3_credit_test_STUDENT.csv")
+summary(Credit.test)
+str(Credit.test)
+
+sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x)) #There is level 0 in Education and Marriage.
+
+Credit.test$EDUCATION[Credit.test$EDUCATION==6 | Credit.test$EDUCATION==0] <- 5
+
+Credit.test$MARRIAGE[Credit.test$MARRIAGE==0] <- 3
+Credit.test <- Credit.test[,-which(names(Credit.test)%in%c("ID,SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
+# Credit.test$EDUCATION <- as.factor(Credit.test$EDUCATION)
+# Credit.test$MARRIAGE <- as.factor(Credit.test$MARRIAGE)
+# Credit.test$SEX <- as.factor(Credit.test$SEX)
 
 #Validation set
 Credit.test <- read.csv("AT3_credit_test_STUDENT.csv")
@@ -65,10 +81,13 @@ sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x)) #There is level 0 in Educa
 Credit.test$EDUCATION[Credit.test$EDUCATION==6 | Credit.test$EDUCATION==0] <- 5
 
 Credit.test$MARRIAGE[Credit.test$MARRIAGE==0] <- 3
-Credit.test <- Credit.test[,-which(names(Credit.test)%in%c("ID,SEX","MARRIAGE"))]
+Credit.test <- Credit.test[,-which(names(Credit.test)%in%c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
+
 # Credit.test$EDUCATION <- as.factor(Credit.test$EDUCATION)
 # Credit.test$MARRIAGE <- as.factor(Credit.test$MARRIAGE)
 # Credit.test$SEX <- as.factor(Credit.test$SEX)
+# Credit.train$default <- as.factor(Credit.train$default)
+
 
 sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x))
 
@@ -82,37 +101,8 @@ Credit.train <- read.csv("Clean_Credit_Train.csv")
 # Train-test split
 set.seed(1)
 train.index <- sample(1:nrow(Credit.train),round(nrow(Credit.train)*0.8),replace = F)
-trainset <- Credit.train[train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE"))]
-testset <- Credit.train[-train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE"))]
-#Validation set
-Credit.test <- read.csv("AT3_credit_test_STUDENT.csv")
-summary(Credit.test)
-str(Credit.test)
-
-sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x)) #There is level 0 in Education and Marriage.
-
-Credit.test$EDUCATION[Credit.test$EDUCATION==6 | Credit.test$EDUCATION==0] <- 5
-
-Credit.test$MARRIAGE[Credit.test$MARRIAGE==0] <- 3
-Credit.test <- Credit.test[,-which(names(Credit.test)%in%c("ID","SEX","MARRIAGE","EDUCATION","PAY_PC2","PAY_PC3"))]
-# Credit.test$EDUCATION <- as.factor(Credit.test$EDUCATION)
-# Credit.test$MARRIAGE <- as.factor(Credit.test$MARRIAGE)
-# Credit.test$SEX <- as.factor(Credit.test$SEX)
-
-sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x))
-
-Credit.train <- read.csv("Clean_Credit_Train.csv")
-
-# Credit.train$EDUCATION <- as.factor(Credit.train$EDUCATION)
-# Credit.train$MARRIAGE <- as.factor(Credit.train$MARRIAGE)
-# Credit.train$SEX <- as.factor(Credit.train$SEX)
-# Credit.train$default <- as.factor(Credit.train$default)
-
-# Train-test split
-set.seed(1)
-train.index <- sample(1:nrow(Credit.train),round(nrow(Credit.train)*0.8),replace = F)
-trainset <- Credit.train[train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE","EDUCATION","PAY_PC2","PAY_PC3"))]
-testset <- Credit.train[-train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE","EDUCATION","PAY_PC2","PAY_PC3"))]
+trainset <- Credit.train[train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
+testset <- Credit.train[-train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
 
 #XgBOOST
 set.seed(2)
