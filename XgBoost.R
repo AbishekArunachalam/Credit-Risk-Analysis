@@ -151,10 +151,6 @@ pred[predicted_values <0.5] <- 0
 levels(pred)
 confusionMatrix(data = as.factor(pred),reference= as.factor(Y_test),mode = "everything")
 library(pROC)
-AUC(pred,Y_test)
-Out_pred <- predict(xgb_model,newdata = Credit.test,type = "raw")
-pred1 <- rep(0,length(Out_pred))
-pred1[Out_pred >0.5] <- 1
-pred1[Out_pred <0.5] <- 0
-pred1
-pred <- cbind(Credit.test$ID,pred1)
+levels(Y_test) <- c(0,1)
+levels(predicted_values) <- c(0,1)
+AUC(predicted_values,Y_test)       
