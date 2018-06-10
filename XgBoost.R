@@ -104,5 +104,5 @@ pred1
 pred <- cbind(Credit.test$ID,pred1)
 Credit.test <- read.csv("AT3_credit_test_STUDENT.csv") #Read credit_test file for ID.
 colnames(pred) <- c("ID","default")
-write.csv(pred,"Xg1BoostPrediction.csv",row.names = F)
+write.csv(pred,"XgBoostPrediction.csv",row.names = F)
 
