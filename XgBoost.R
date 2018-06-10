@@ -8,8 +8,8 @@ summary(Credit.train)
 # Train-test split
 set.seed(1)
 train.index <- sample(1:nrow(Credit.train),round(nrow(Credit.train)*0.8),replace = F) #80:20 split
-trainset <- Credit.train[train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))] #Remove unwanted predictors.
-testset <- Credit.train[-train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
+trainset <- Credit.train[train.index,-which(names(Credit.train) %in% c("ID","SEX","AMT_PC5","AMT_PC6","AMT_PC7"))] #Remove unwanted predictors.
+testset <- Credit.train[-train.index,-which(names(Credit.train) %in% c("ID","SEX","AMT_PC5","AMT_PC6","AMT_PC7"))]
 
 
 #XgBOOST
@@ -47,7 +47,6 @@ xgb_model <- train(
   X_train, Y_train,  
   trControl = xgb_trcontrol,
   tuneGrid = xgbGrid,
-  # tuneLength = 5,
   method = "xgbTree",
   metric = "Kappa",
   verbose=T,
@@ -76,7 +75,6 @@ xgb_model1 <- train(
   master_data_x, master_data_y,  
   trControl = xgb_trcontrol,
   tuneGrid = xgbGrid,
-  # tuneLength = 5,
   method = "xgbTree",
   metric = "Kappa",
   verbose=T,
@@ -90,21 +88,21 @@ str(Credit.test)
 
 sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x)) #There is level 0 in Education and Marriage.
 
-Credit.test$EDUCATION[Credit.test$EDUCATION==6 | Credit.test$EDUCATION==0] <- 5
+Credit.test$EDUCATION[Credit.test$EDUCATION==6 | Credit.test$EDUCATION==0] <- 5 #Replace levels 6 and 0 with 5.
 
-Credit.test$MARRIAGE[Credit.test$MARRIAGE==0] <- 3
-Credit.test <- Credit.test[,-which(names(Credit.test)%in%c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
+Credit.test$MARRIAGE[Credit.test$MARRIAGE==0] <- 3 #Replace level 0 with level 3.
+Credit.test <- Credit.test[,-which(names(Credit.test)%in%c("ID","SEX","AMT_PC5","AMT_PC6","AMT_PC7"))] #Remove insignificant columns from test set.
 
-sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x))
+sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x)) #Get unique values in columns 3,4,5,6.
 
-Credit_test <- xgb.DMatrix(as.matrix(Credit.test))
-Out_pred <- predict(xgb_model1,newdata = Credit_test,type = "raw")
+Credit_test <- xgb.DMatrix(as.matrix(Credit.test)) #Generate xgb matrix.
+Out_pred <- predict(xgb_model1,newdata = Credit_test,type = "raw") #predict for the test set.
 pred1 <- rep(0,length(Out_pred))
 pred1[Out_pred >0.5] <- 1
 pred1[Out_pred <0.5] <- 0
 pred1
 pred <- cbind(Credit.test$ID,pred1)
-Credit.test <- read.csv("AT3_credit_test_STUDENT.csv")
+Credit.test <- read.csv("AT3_credit_test_STUDENT.csv") #Read credit_test file for ID.
 colnames(pred) <- c("ID","default")
 write.csv(pred,"Xg1BoostPrediction.csv",row.names = F)
 
