@@ -1,132 +1,43 @@
-library(dplyr)
-library(xgboost)
+############
+#XgBoost
+############
+
 library(caret)
-library(MLmetrics)
-
-Credit.train <- read.csv("AT3_credit_train_STUDENT.csv")
-
-head(Credit.train)
-str(Credit.train)#23101 obs. of  17 variables
-summary(Credit.train) #One of the observations has maximum age of 141. There is a chance for data impurity.
-sapply(Credit.train[,c(3,4,5,6,17)],function(x)unique(x)) #Find values in each column of a data frame.
-
-#Clean LIMIT_BAL
-#There is min value of -99 in LIMIT_BAL which is not possible.
-Credit.train %>% filter(LIMIT_BAL < 0) #There are 50 rows. Lets remove them.
-Credit.train <- Credit.train[Credit.train$LIMIT_BAL >0,]
-Credit.train$LIMIT_BAL <- as.integer(Credit.train$LIMIT_BAL) #Convert LIMIT_BAL to integer.
-summary(Credit.train)
-
-#Clean SEX 
-Credit.train %>% filter(SEX == "dolphin" | SEX== "cat" | SEX=="dog") #Check the number of rows containing undefined levels in SEX.
-Credit.train <- Credit.train[Credit.train$SEX==1 | Credit.train$SEX==2, ] #Retain Sex=1 and Sex=2.
-Credit.train$SEX <- factor(Credit.train$SEX)
-
-#Clean EDUCATION
-Credit.train$EDUCATION[Credit.train$EDUCATION==6 | Credit.train$EDUCATION==0] <- 5 # Levels 5 and 6 of education are unknown. Merge them as a single level.
-Credit.train$EDUCATION <- as.factor(Credit.train$EDUCATION)
-
-#Clean MARRIAGE
-Credit.train$MARRIAGE[Credit.train$MARRIAGE==0] <- 3 #Set unknown level marriage 0 to 3-Other. 
-Credit.train$MARRIAGE <- as.factor(Credit.train$MARRIAGE)
-
-#Clean AGE
-#The maximum age of observations in validation set is 79. Filter observations till age 79.
-Credit.train %>% filter(AGE > 79) #There are 50 observations with abnormal ages. There are no observations for age between 79-128.
-Credit.train <- Credit.train[Credit.train$AGE <=79,]
-
-#Clean Default
-Credit.train$default <- as.character(Credit.train$default)
-Credit.train$default[Credit.train$default=='N'] <- 0 #Assign 0 for N
-Credit.train$default[Credit.train$default=='Y'] <- 1 #Assign 1 for Y
-Credit.train$default <- as.factor(Credit.train$default)
-
-sapply(Credit.train[,c(3,4,5,6,17)],function(x)unique(x)) #Check the columns are in appropriate format.
-
-sum(sapply(Credit.train[,c(3,4,5,6,17)],function(x)is.na(x))) #Check it any columns contain NA.
-
-dim(Credit.train) #23000 observations and 17 variables.
-
-write.csv(Credit.train,"Clean_Credit_Train.csv",row.names = F)
-
-rm(list=ls())
-
-# Credit.cor <- cor(Credit.train)
-# corrplot::corrplot(Credit.cor)
-# class(Credit.train$EDUCATION)
-           
-           
-#Validation set
-Credit.test <- read.csv("AT3_credit_test_STUDENT.csv")
-summary(Credit.test)
-str(Credit.test)
-
-sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x)) #There is level 0 in Education and Marriage.
-
-Credit.test$EDUCATION[Credit.test$EDUCATION==6 | Credit.test$EDUCATION==0] <- 5
-
-Credit.test$MARRIAGE[Credit.test$MARRIAGE==0] <- 3
-Credit.test <- Credit.test[,-which(names(Credit.test)%in%c("ID,SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
-# Credit.test$EDUCATION <- as.factor(Credit.test$EDUCATION)
-# Credit.test$MARRIAGE <- as.factor(Credit.test$MARRIAGE)
-# Credit.test$SEX <- as.factor(Credit.test$SEX)
-
-#Validation set
-Credit.test <- read.csv("AT3_credit_test_STUDENT.csv")
-summary(Credit.test)
-str(Credit.test)
-
-sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x)) #There is level 0 in Education and Marriage.
-
-Credit.test$EDUCATION[Credit.test$EDUCATION==6 | Credit.test$EDUCATION==0] <- 5
-
-Credit.test$MARRIAGE[Credit.test$MARRIAGE==0] <- 3
-Credit.test <- Credit.test[,-which(names(Credit.test)%in%c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
-
-# Credit.test$EDUCATION <- as.factor(Credit.test$EDUCATION)
-# Credit.test$MARRIAGE <- as.factor(Credit.test$MARRIAGE)
-# Credit.test$SEX <- as.factor(Credit.test$SEX)
-# Credit.train$default <- as.factor(Credit.train$default)
-
-
-sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x))
-
 Credit.train <- read.csv("Clean_Credit_Train.csv")
-
-# Credit.train$EDUCATION <- as.factor(Credit.train$EDUCATION)
-# Credit.train$MARRIAGE <- as.factor(Credit.train$MARRIAGE)
-# Credit.train$SEX <- as.factor(Credit.train$SEX)
-# Credit.train$default <- as.factor(Credit.train$default)
-
+summary(Credit.train)
 # Train-test split
 set.seed(1)
-train.index <- sample(1:nrow(Credit.train),round(nrow(Credit.train)*0.8),replace = F)
-trainset <- Credit.train[train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
+train.index <- sample(1:nrow(Credit.train),round(nrow(Credit.train)*0.8),replace = F) #80:20 split
+trainset <- Credit.train[train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))] #Remove unwanted predictors.
 testset <- Credit.train[-train.index,-which(names(Credit.train) %in% c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
 
+
 #XgBOOST
+library(doParallel)
+cl <- makeCluster(detectCores()) #detect cores
+registerDoParallel(cl)
 set.seed(2)
-X_train <- xgb.DMatrix(as.matrix(trainset %>% select(-default)))
+X_train <- xgb.DMatrix(as.matrix(trainset %>% select(-default))) #Generate Xgb matrix for trainset.
 Y_train <- as.factor(trainset$default)
 levels(Y_train) <- c("No","Yes")
-X_test <- xgb.DMatrix(as.matrix(testset %>% select(-default)))
+X_test <- xgb.DMatrix(as.matrix(testset %>% select(-default)))#Generate Xgb matrix for testset.
 Y_test <- testset$default
-
-
+master_data_x <- xgb.DMatrix(as.matrix(Credit.train %>% select(-default)))#Generate Xgb matrix for entire credit_train,
+master_data_y <- as.factor(Credit.train$default)
 xgb_trcontrol <- trainControl(
   method = "repeatedcv",
   repeats = 1,
   number = 10,
   classProbs = TRUE,
   allowParallel = TRUE
-)
+) #Train control parameters
 
-xgbGrid <- expand.grid(nrounds = c(500,800,1000,1200,1400),
-                       max_depth = c(2,4,6,8,10,12,14),
-                       colsample_bytree = seq(0.4,1,0.1,0.2),
+xgbGrid <- expand.grid(nrounds = c(1000,1050,1100), #The number of iterations the model runs
+                       max_depth = 4, #Depth of the trees to grow
+                       colsample_bytree = 0.4,
                        ## The values below are default values in the sklearn-api.
-                       eta = c(0.01,0.05,0.1,0.5,1),
-                       gamma=1,
+                       eta = c(0.009,0.006), #Shrinkage parameter
+                       gamma= 0, #Minimum loss reduction
                        min_child_weight = 1,
                        subsample = 1
 )
@@ -145,12 +56,55 @@ xgb_model <- train(
 print(xgb_model)
 plot(xgb_model)
 predicted_values <- predict(xgb_model,newdata = X_test,type = "raw")
-pred <- rep(0,length(predicted_values))
-pred[predicted_values >0.5] <- 1
-pred[predicted_values <0.5] <- 0
-levels(pred)
-confusionMatrix(data = as.factor(pred),reference= as.factor(Y_test),mode = "everything")
-library(pROC)
+Y_test <- as.factor(Y_test)
+levels(Y_test) <- c("No","Yes")
+
+library(caret)
+confusionMatrix(predicted_values,Y_test,mode="everything") #Kappa value - 0.5007, F1-score - 0.8990, False negative-545.
+
+library(ROCR)
 levels(Y_test) <- c(0,1)
 levels(predicted_values) <- c(0,1)
-AUC(predicted_values,Y_test)       
+pr <- prediction(as.integer(predicted_values), as.integer(testset$default)) 
+prf <- performance(pr, measure = "tpr", x.measure = "fpr") #Calculate performance with true positive rate as accuracy measure.
+plot(prf,colour="red") # Plot ROC curve.
+auc <- performance(pr, measure = "auc") #Calculate performance with AUC as accuracy measure.
+auc <- auc@y.values[[1]]
+auc #Area under the curve 0.72311
+
+xgb_model1 <- train(
+  master_data_x, master_data_y,  
+  trControl = xgb_trcontrol,
+  tuneGrid = xgbGrid,
+  # tuneLength = 5,
+  method = "xgbTree",
+  metric = "Kappa",
+  verbose=T,
+  nthread=3
+)
+
+#Validation set
+Credit.test <- read.csv("AT3_credit_test_STUDENT.csv")
+summary(Credit.test)
+str(Credit.test)
+
+sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x)) #There is level 0 in Education and Marriage.
+
+Credit.test$EDUCATION[Credit.test$EDUCATION==6 | Credit.test$EDUCATION==0] <- 5
+
+Credit.test$MARRIAGE[Credit.test$MARRIAGE==0] <- 3
+Credit.test <- Credit.test[,-which(names(Credit.test)%in%c("ID","SEX","MARRIAGE","AMT_PC5","AMT_PC6","AMT_PC7"))]
+
+sapply(Credit.test[,c(3,4,5,6)],function(x)unique(x))
+
+Credit_test <- xgb.DMatrix(as.matrix(Credit.test))
+Out_pred <- predict(xgb_model1,newdata = Credit_test,type = "raw")
+pred1 <- rep(0,length(Out_pred))
+pred1[Out_pred >0.5] <- 1
+pred1[Out_pred <0.5] <- 0
+pred1
+pred <- cbind(Credit.test$ID,pred1)
+Credit.test <- read.csv("AT3_credit_test_STUDENT.csv")
+colnames(pred) <- c("ID","default")
+write.csv(pred,"Xg1BoostPrediction.csv",row.names = F)
+
